@@ -5,16 +5,13 @@ use schema::{blogs, posts, users};
 mod schema;
 
 joinable!(posts -> users (user_id));
-allow_tables_to_appear_in_same_query!(posts, users);
-
 joinable!(posts -> blogs (blog_id));
-allow_tables_to_appear_in_same_query!(posts, blogs);
 
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
 #[diesel(table_name = users)]
 pub struct User {
     id: i32,
-    name: String,
+    usename: String,
 }
 
 #[derive(Debug, Associations, Identifiable, Queryable, Insertable)]
@@ -27,8 +24,8 @@ struct Post {
     blog_id: i32,
     user_id: i32,
     create_date: DateTime<Utc>,
-    last_mod_date: DateTime<Utc>,
-    publish_date: DateTime<Utc>,
+    updated_date: DateTime<Utc>,
+    published_date: DateTime<Utc>,
     title: String,
     description: String,
     content: String,
@@ -39,8 +36,7 @@ struct Post {
 struct Blog {
     id: i32,
     create_date: DateTime<Utc>,
-    last_mod_date: DateTime<Utc>,
-    publish_date: DateTime<Utc>,
+    updated_date: DateTime<Utc>,
     title: String,
     description: String,
 }

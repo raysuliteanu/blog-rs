@@ -1,1 +1,3 @@
--- This file should undo anything in `up.sql`
+DROP TABLE POSTS;
+DROP TABLE USERS;
+DROP TABLE BLOGS;

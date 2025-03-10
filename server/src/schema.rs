@@ -1,31 +1,39 @@
+// @generated automatically by Diesel CLI.
+
 diesel::table! {
-    users (id) {
+    blogs (id) {
         id -> Int4,
-        name -> Varchar,
+        user_id -> Int4,
+        create_date -> Timestamptz,
+        updated_date -> Timestamptz,
+        title -> Varchar,
+        description -> Varchar,
     }
 }
 
 diesel::table! {
     posts (id) {
         id -> Int4,
-        blog_id -> Int4,
         user_id -> Int4,
+        blog_id -> Int4,
         create_date -> Timestamptz,
-        last_mod_date -> Timestamptz,
-        publish_date -> Timestamptz,
+        updated_date -> Timestamptz,
+        published_date -> Nullable<Timestamptz>,
         title -> Varchar,
-        description -> Text,
+        description -> Varchar,
         content -> Text,
     }
 }
 
 diesel::table! {
-    blogs (id) {
+    users (id) {
         id -> Int4,
-        create_date -> Timestamptz,
-        last_mod_date -> Timestamptz,
-        publish_date -> Timestamptz,
-        title -> Varchar,
-        description -> Text,
+        username -> Text,
     }
 }
+
+diesel::allow_tables_to_appear_in_same_query!(
+    blogs,
+    posts,
+    users,
+);
