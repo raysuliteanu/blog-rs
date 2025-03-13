@@ -1,6 +1,7 @@
 use crate::schema::{blogs, posts, users};
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
+use diesel::result::Error as DieselError;
 
 joinable!(blogs -> users (user_id));
 joinable!(posts -> users (user_id));
@@ -41,14 +42,20 @@ pub struct Blog {
     description: String,
 }
 
-pub fn get_dummy_user() -> User {
+/// get user by id; returns the user or NotFound error
+pub fn get_user(user_id: i32, conn: &mut PgConnection) -> Result<User, DieselError> {
+    use crate::schema::users::dsl::*;
+    users.find(user_id).first(conn)
+}
+
+pub fn create_dummy_user() -> User {
     User {
         id: 1,
         username: "Alice".to_string(),
     }
 }
 
-pub fn get_dummy_blog() -> Blog {
+pub fn create_dummy_blog() -> Blog {
     Blog {
         id: 1,
         user_id: 1,
@@ -59,7 +66,7 @@ pub fn get_dummy_blog() -> Blog {
     }
 }
 
-pub fn get_dummy_posts() -> Vec<Post> {
+pub fn create_dummy_posts() -> Vec<Post> {
     vec![
         Post {
             id: 1,
