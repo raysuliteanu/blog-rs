@@ -3,10 +3,6 @@ use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel::result::Error as DieselError;
 
-joinable!(blogs -> users (user_id));
-joinable!(posts -> users (user_id));
-joinable!(posts -> blogs (blog_id));
-
 #[derive(Insertable, Identifiable, Queryable, Selectable, PartialEq, Debug)]
 #[diesel(table_name = users)]
 pub struct User {
@@ -31,8 +27,9 @@ pub struct Post {
     content: String,
 }
 
-#[derive(Debug, Identifiable, Queryable, Insertable, Selectable)]
+#[derive(Debug, Associations, Identifiable, Queryable, Insertable, Selectable)]
 #[diesel(table_name = blogs)]
+#[diesel(belongs_to(User))]
 pub struct Blog {
     id: i32,
     user_id: i32,

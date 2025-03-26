@@ -32,6 +32,10 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(blogs -> users (user_id));
+diesel::joinable!(posts -> blogs (blog_id));
+diesel::joinable!(posts -> users (user_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     blogs,
     posts,
