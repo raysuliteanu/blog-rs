@@ -1,14 +1,13 @@
 use std::error::Error;
 
 use diesel::prelude::*;
-use log::{SetLoggerError, info};
+use log::{info, SetLoggerError};
 use log4rs::{
-    Config, Handle,
-    append::console::ConsoleAppender,
-    config::{Appender, Root},
+    append::console::ConsoleAppender, config::{Appender, Root},
     encode::json::JsonEncoder,
+    Config,
+    Handle,
 };
-use model::Post;
 
 mod db;
 mod model;
@@ -19,42 +18,35 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     info!("starting");
 
-    use schema::blogs::dsl::*;
-    use schema::posts::dsl::*;
-    use schema::users::dsl::*;
-
     let mut conn: PgConnection = db::establish_connection();
 
-    let user = model::create_dummy_user();
+    let user = model::create_user("Alice", &mut conn)?;
 
-    diesel::insert_into(users)
-        .values(&user)
-        .execute(&mut conn)
-        .expect("Error saving new user");
+    let blog = model::create_blog(&user, "Alice's blog", "blog by Alice", &mut conn)?;
 
-    let blog = model::create_dummy_blog();
+    let _p1 = model::create_post(
+        &blog,
+        "the first post",
+        "whatever",
+        "some content",
+        &mut conn,
+    )?;
 
-    diesel::insert_into(blogs)
-        .values(&blog)
-        .execute(&mut conn)
-        .expect("Error saving new blog");
+    let _p2 = model::create_post(
+        &blog,
+        "the second post",
+        "yada yada",
+        "yada yada content",
+        &mut conn,
+    )?;
 
-    let vec = model::create_dummy_posts();
-    diesel::insert_into(posts)
-        .values(&vec)
-        .execute(&mut conn)
-        .expect("Error saving new post");
-
-    let results = posts
-        .select(Post::as_select())
-        .load::<Post>(&mut conn)
-        .unwrap();
+    let results = model::get_pages(&blog, &mut conn)?;
 
     for post in results {
         println!("{:?}", post);
     }
 
-    let user = model::get_user(1, &mut conn)?;
+    let user = model::get_user(user.id, &mut conn)?;
     info!("{user:?}");
 
     Ok(())
