@@ -1,6 +1,6 @@
 use crate::schema::{blogs, posts, users};
 use chrono::{DateTime, Utc};
-use diesel::prelude::*;
+use diesel::{associations::HasTable, expression::AsExpression, prelude::*, sql_types::Text};
 
 pub type DieselResult<T> = Result<T, diesel::result::Error>;
 
@@ -10,6 +10,42 @@ pub type DieselResult<T> = Result<T, diesel::result::Error>;
 pub struct User {
     pub id: i32,
     pub username: String,
+}
+
+define_sql_function!(fn canon_user_name(x: Text) -> Text);
+
+type WithName<T> = diesel::dsl::Eq<canon_user_name<users::username>, canon_user_name<T>>;
+
+impl User {
+    fn with_name<T>(name: T) -> WithName<T>
+    where
+        T: AsExpression<Text>,
+    {
+        canon_user_name(users::username).eq(canon_user_name(name))
+    }
+
+    pub fn create_user(name: &str, conn: &mut PgConnection) -> DieselResult<User> {
+        diesel::insert_into(users::table)
+            .values(users::username.eq(name))
+            .returning(User::as_returning())
+            .get_result(conn)
+    }
+
+    pub fn get_users(conn: &mut PgConnection) -> DieselResult<Vec<User>> {
+        users::table.load::<User>(conn)
+    }
+
+    /// get user by id; returns the user or NotFound error
+    pub fn get_user(id: i32, conn: &mut PgConnection) -> DieselResult<User> {
+        users::dsl::users.find(id).first(conn)
+    }
+
+    /// get user by name; returns the user or NotFound error
+    pub fn find_user_by_name(name: &str, conn: &mut PgConnection) -> DieselResult<User> {
+        users::dsl::users::table()
+            .filter(Self::with_name(name))
+            .first(conn)
+    }
 }
 
 #[derive(Debug, Associations, Identifiable, Queryable, Insertable, Selectable)]
@@ -40,23 +76,6 @@ pub struct Blog {
     updated_date: DateTime<Utc>,
     title: String,
     description: String,
-}
-
-pub fn create_user(name: &str, conn: &mut PgConnection) -> DieselResult<User> {
-    use crate::schema::users::username;
-    diesel::insert_into(users::table)
-        .values(username.eq(name))
-        .returning(User::as_returning())
-        .get_result(conn)
-}
-
-pub fn get_users(conn: &mut PgConnection) -> DieselResult<Vec<User>> {
-    users::table.load::<User>(conn)
-}
-
-/// get user by id; returns the user or NotFound error
-pub fn get_user(id: i32, conn: &mut PgConnection) -> DieselResult<User> {
-    users::dsl::users.find(id).first(conn)
 }
 
 pub fn create_blog(
