@@ -1,14 +1,14 @@
 use std::error::Error;
 
+use crate::schema::users;
 use diesel::prelude::*;
-use log::{SetLoggerError, info};
+use log::{info, SetLoggerError};
 use log4rs::{
-    Config, Handle,
-    append::console::ConsoleAppender,
-    config::{Appender, Root},
+    append::console::ConsoleAppender, config::{Appender, Root},
     encode::json::JsonEncoder,
+    Config,
+    Handle,
 };
-use model::Post;
 
 mod db;
 mod model;
@@ -19,43 +19,49 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     info!("starting");
 
-    use schema::blogs::dsl::*;
-    use schema::posts::dsl::*;
-    use schema::users::dsl::*;
-
     let mut conn: PgConnection = db::establish_connection();
 
-    let user = model::create_dummy_user();
+    let orig_users_cnt = model::get_users(&mut conn)?.len();
+    let alice = model::create_user("Alice", &mut conn)?;
+    let bob = model::create_user("Bob", &mut conn)?;
+    let carol = model::create_user("Carol", &mut conn)?;
 
-    diesel::insert_into(users)
-        .values(&user)
-        .execute(&mut conn)
-        .expect("Error saving new user");
+    let users = model::get_users(&mut conn)?;
+    assert_eq!(users.len(), orig_users_cnt + 3);
 
-    let blog = model::create_dummy_blog();
+    let orig_blogs_cnt = model::get_all_blogs(&mut conn)?.len();
+    let alice_blog = model::create_blog(&alice, "Alice's blog", "blog by Alice", &mut conn)?;
+    let bob_blog = model::create_blog(&alice, "Bob's blog", "blog by Bob", &mut conn)?;
+    let carol_blog = model::create_blog(&alice, "Carol's blog", "blog by Carol", &mut conn)?;
 
-    diesel::insert_into(blogs)
-        .values(&blog)
-        .execute(&mut conn)
-        .expect("Error saving new blog");
+    let blogs = model::get_all_blogs(&mut conn)?;
+    assert_eq!(blogs.len(), orig_blogs_cnt + 3);
 
-    let vec = model::create_dummy_posts();
-    diesel::insert_into(posts)
-        .values(&vec)
-        .execute(&mut conn)
-        .expect("Error saving new post");
+    let _p1 = model::create_post(
+        &alice_blog,
+        "the first post",
+        "whatever",
+        "some content",
+        &mut conn,
+    )?;
 
-    let results = posts
-        .select(Post::as_select())
-        .load::<Post>(&mut conn)
-        .unwrap();
+    let _p2 = model::create_post(
+        &alice_blog,
+        "the second post",
+        "yada yada",
+        "yada yada content",
+        &mut conn,
+    )?;
+
+    let results = model::get_pages(&alice_blog, &mut conn)?;
 
     for post in results {
         println!("{:?}", post);
     }
 
-    let user = model::get_user(1, &mut conn)?;
-    info!("{user:?}");
+    for user in users {
+        println!("{user:?}");
+    }
 
     Ok(())
 }

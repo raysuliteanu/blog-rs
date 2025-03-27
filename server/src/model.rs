@@ -1,13 +1,15 @@
 use crate::schema::{blogs, posts, users};
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use diesel::result::Error as DieselError;
+
+pub type DieselResult<T> = Result<T, diesel::result::Error>;
 
 #[derive(Insertable, Identifiable, Queryable, Selectable, PartialEq, Debug)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(table_name = users)]
 pub struct User {
-    id: i32,
-    username: String,
+    pub id: i32,
+    pub username: String,
 }
 
 #[derive(Debug, Associations, Identifiable, Queryable, Insertable, Selectable)]
@@ -29,6 +31,7 @@ pub struct Post {
 
 #[derive(Debug, Associations, Identifiable, Queryable, Insertable, Selectable)]
 #[diesel(table_name = blogs)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(belongs_to(User))]
 pub struct Blog {
     id: i32,
@@ -39,53 +42,88 @@ pub struct Blog {
     description: String,
 }
 
+pub fn create_user(name: &str, conn: &mut PgConnection) -> DieselResult<User> {
+    use crate::schema::users::username;
+    diesel::insert_into(users::table)
+        .values(username.eq(name))
+        .returning(User::as_returning())
+        .get_result(conn)
+}
+
+pub fn get_users(conn: &mut PgConnection) -> DieselResult<Vec<User>> {
+    users::table.load::<User>(conn)
+}
+
 /// get user by id; returns the user or NotFound error
-pub fn get_user(user_id: i32, conn: &mut PgConnection) -> Result<User, DieselError> {
-    use crate::schema::users::dsl::*;
-    users.find(user_id).first(conn)
+pub fn get_user(id: i32, conn: &mut PgConnection) -> DieselResult<User> {
+    users::dsl::users.find(id).first(conn)
 }
 
-pub fn create_dummy_user() -> User {
-    User {
-        id: 1,
-        username: "Alice".to_string(),
-    }
+pub fn create_blog(
+    user: &User,
+    title: &str,
+    desc: &str,
+    conn: &mut PgConnection,
+) -> DieselResult<Blog> {
+    let create_date = Utc::now();
+    let update_date = create_date;
+    diesel::insert_into(blogs::table)
+        .values((
+            blogs::user_id.eq(user.id),
+            blogs::create_date.eq(create_date),
+            blogs::updated_date.eq(update_date),
+            blogs::title.eq(title),
+            blogs::description.eq(desc),
+        ))
+        .returning(Blog::as_returning())
+        .get_result(conn)
 }
 
-pub fn create_dummy_blog() -> Blog {
-    Blog {
-        id: 1,
-        user_id: 1,
-        create_date: Utc::now(),
-        updated_date: Utc::now(),
-        title: "Alice's Blog".to_string(),
-        description: "This is my blog".to_string(),
-    }
+pub fn get_all_blogs(conn: &mut PgConnection) -> DieselResult<Vec<Blog>> {
+    blogs::table.load::<Blog>(conn)
 }
 
-pub fn create_dummy_posts() -> Vec<Post> {
-    vec![
-        Post {
-            id: 1,
-            blog_id: 1,
-            user_id: 1,
-            create_date: Utc::now(),
-            updated_date: Utc::now(),
-            published_date: None,
-            title: "Hello, world!".to_string(),
-            description: "This is a test post".to_string(),
-            content: "This is the content of the post".to_string(),
-        },
-        Post {
-            id: 2,
-            blog_id: 1,
-            user_id: 1,
-            create_date: Utc::now(),
-            updated_date: Utc::now(),
-            published_date: None,
-            title: "Hello, world!".to_string(),
-            description: "This is a test post".to_string(),
-            content: "This is the content of the post".to_string(),
-        },
-    ]
+pub fn get_blogs(user: User, conn: &mut PgConnection) -> DieselResult<Vec<Blog>> {
+    Blog::belonging_to(&user)
+        .select(Blog::as_select())
+        .load(conn)
+}
+
+/// get blog by id; returns the blog or NotFound error
+pub fn get_blog(id: i32, conn: &mut PgConnection) -> DieselResult<Blog> {
+    blogs::dsl::blogs.find(id).first(conn)
+}
+
+pub fn get_pages(blog: &Blog, conn: &mut PgConnection) -> DieselResult<Vec<Post>> {
+    Post::belonging_to(blog)
+        .select(Post::as_select())
+        .load(conn)
+}
+
+/// get post by id; returns the post or NotFound error
+pub fn get_post(id: i32, conn: &mut PgConnection) -> DieselResult<Post> {
+    posts::dsl::posts.find(id).first(conn)
+}
+
+pub fn create_post(
+    blog: &Blog,
+    title: &str,
+    desc: &str,
+    content: &str,
+    conn: &mut PgConnection,
+) -> DieselResult<Post> {
+    let create_date = Utc::now();
+    let update_date = create_date;
+    diesel::insert_into(posts::table)
+        .values((
+            posts::user_id.eq(blog.user_id),
+            posts::blog_id.eq(blog.id),
+            posts::create_date.eq(create_date),
+            posts::updated_date.eq(update_date),
+            posts::title.eq(title),
+            posts::description.eq(desc),
+            posts::content.eq(content),
+        ))
+        .returning(Post::as_returning())
+        .get_result(conn)
 }
