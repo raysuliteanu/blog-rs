@@ -47,35 +47,17 @@ impl User {
             .first(conn)
     }
 }
-
-#[derive(Debug, Associations, Identifiable, Queryable, Insertable, Selectable)]
-#[diesel(table_name = posts)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-#[diesel(belongs_to(Blog))]
-#[diesel(belongs_to(User))]
-pub struct Post {
-    id: i32,
-    blog_id: i32,
-    user_id: i32,
-    create_date: DateTime<Utc>,
-    updated_date: DateTime<Utc>,
-    published_date: Option<DateTime<Utc>>,
-    title: String,
-    description: String,
-    content: String,
-}
-
 #[derive(Debug, Associations, Identifiable, Queryable, Insertable, Selectable)]
 #[diesel(table_name = blogs)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(belongs_to(User))]
 pub struct Blog {
-    id: i32,
-    user_id: i32,
-    create_date: DateTime<Utc>,
-    updated_date: DateTime<Utc>,
-    title: String,
-    description: String,
+    pub id: i32,
+    pub user_id: i32,
+    pub create_date: DateTime<Utc>,
+    pub updated_date: DateTime<Utc>,
+    pub title: String,
+    pub description: String,
 }
 
 pub fn create_blog(
@@ -113,7 +95,24 @@ pub fn get_blog(id: i32, conn: &mut PgConnection) -> DieselResult<Blog> {
     blogs::dsl::blogs.find(id).first(conn)
 }
 
-pub fn get_pages(blog: &Blog, conn: &mut PgConnection) -> DieselResult<Vec<Post>> {
+#[derive(Debug, Associations, Identifiable, Queryable, Insertable, Selectable)]
+#[diesel(table_name = posts)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(belongs_to(Blog))]
+#[diesel(belongs_to(User))]
+pub struct Post {
+    id: i32,
+    blog_id: i32,
+    user_id: i32,
+    create_date: DateTime<Utc>,
+    updated_date: DateTime<Utc>,
+    published_date: Option<DateTime<Utc>>,
+    title: String,
+    description: String,
+    content: String,
+}
+
+pub fn get_posts(blog: &Blog, conn: &mut PgConnection) -> DieselResult<Vec<Post>> {
     Post::belonging_to(blog)
         .select(Post::as_select())
         .load(conn)

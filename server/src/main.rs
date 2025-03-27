@@ -1,6 +1,5 @@
 use std::error::Error;
 
-use crate::schema::users;
 use diesel::prelude::*;
 use log::{SetLoggerError, info};
 use log4rs::{
@@ -9,10 +8,7 @@ use log4rs::{
     config::{Appender, Root},
     encode::json::JsonEncoder,
 };
-
-mod db;
-mod model;
-mod schema;
+use server::{db, model};
 
 fn main() -> Result<(), Box<dyn Error>> {
     init_logging()?;
@@ -63,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &mut conn,
     )?;
 
-    let results = model::get_pages(&alice_blog, &mut conn)?;
+    let results = model::get_posts(&alice_blog, &mut conn)?;
 
     for post in results {
         println!("{:?}", post);
